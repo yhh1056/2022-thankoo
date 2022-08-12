@@ -1,36 +1,29 @@
 import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from 'react-query';
+import { useMutation, useQueryClient } from 'react-query';
 import { client } from '../../apis/axios';
 import { API_PATH } from '../../constants/api';
 import { UserProfile } from '../../types';
-import useToast from './../useToast';
+import { exchangeCount, useGetCouponExchangeCount, useGetProfile } from '../@queries/profile';
+import useToast from '../useToast';
 
-const useProfile = () => {
-  const { show: showToast } = useToast();
+const useUserProfile = () => {
+  const { insertToastItem } = useToast();
   const queryClient = useQueryClient();
   const [isNameEdit, setIsNameEdit] = useState(false);
   const [name, setName] = useState<string>('');
-  const onChangeName = e => {
-    setName(e.target.value);
-  };
+  const [exchangeCount, setExchangeCount] = useState({ sentCount: 0, receivedCount: 0 });
 
-  const { data: profile } = useQuery<UserProfile>(
-    'profile',
-    async () => {
-      const { data } = await client({
-        method: 'get',
-        url: `${API_PATH.PROFILE}`,
-      });
-
-      return data;
+  const { data: profile } = useGetProfile({
+    onSuccess: (data: UserProfile) => {
+      setName(data.name);
     },
-    {
-      refetchOnWindowFocus: false,
-      onSuccess: profile => {
-        setName(profile.name);
-      },
-    }
-  );
+  });
+
+  const { data } = useGetCouponExchangeCount({
+    onSuccess: (data: exchangeCount) => {
+      setExchangeCount(data);
+    },
+  });
 
   const submitModifyName = () => {
     if (!name.length || name === profile?.name) {
@@ -52,7 +45,7 @@ const useProfile = () => {
 
     if (isNameEdit) {
       submitModifyName();
-      showToast('수정이 완료됐습니다!');
+      insertToastItem(`수정이 완료됐습니다`);
     }
 
     setIsNameEdit(prev => !prev);
@@ -74,7 +67,15 @@ const useProfile = () => {
     }
   );
 
-  return { profile, editUserName, isNameEdit, name, handleClickModifyNameButton, onChangeName };
+  return {
+    profile,
+    editUserName,
+    isNameEdit,
+    name,
+    handleClickModifyNameButton,
+    exchangeCount,
+    setName,
+  };
 };
 
-export default useProfile;
+export default useUserProfile;
